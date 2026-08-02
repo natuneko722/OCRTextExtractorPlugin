@@ -1,0 +1,2 @@
+# OCRTextExtractorPlugin
+OCRプラグインの開発だよ
