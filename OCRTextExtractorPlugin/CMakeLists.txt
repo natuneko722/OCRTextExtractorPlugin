@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(OCRTextExtractorPlugin LANGUAGES CXX)
+project(OCRTextExtractorPlugin VERSION 1.4.0 LANGUAGES CXX)
 
 set(AVIUTL2_SDK_DIR "D:/創作物全般/codex君/aviutl2_sdk" CACHE PATH "Path to the AviUtl2 Plugin SDK")
 

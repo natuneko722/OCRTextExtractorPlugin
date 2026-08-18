@@ -9,7 +9,10 @@ public:
 private:
     std::wstring GetProjectFilePath() const;
     bool PlaceImageOnTimeline(const std::wstring& file) const;
+    void RenderCurrentScene(std::function<void(CapturedBitmap, std::wstring)> completed) const;
     void RememberProjectFile(struct PROJECT_FILE* project);
+    struct SceneRenderRequest;
+    static void OnSceneRendered(void* value, int frame, const void* buffer, int width, int height, int pitch);
     static void OnProjectLoad(struct PROJECT_FILE* project);
     static void OnProjectSave(struct PROJECT_FILE* project);
     static void ShowWindowClient();

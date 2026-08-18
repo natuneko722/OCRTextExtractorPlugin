@@ -19,6 +19,8 @@ int ConfigIO::GetAutoRecognizeSeconds() const { return (std::max)(1, static_cast
 void ConfigIO::SetAutoRecognizeSeconds(int seconds) const { wchar_t value[16]; swprintf_s(value, L"%d", (std::max)(1, seconds)); WritePrivateProfileStringW(L"OCR", L"AutoRecognizeSeconds", value, settingsPath_.c_str()); }
 bool ConfigIO::GetAutoCopy() const { return GetPrivateProfileIntW(L"OCR", L"AutoCopy", 0, settingsPath_.c_str()) != 0; }
 void ConfigIO::SetAutoCopy(bool enabled) const { WritePrivateProfileStringW(L"OCR", L"AutoCopy", enabled ? L"1" : L"0", settingsPath_.c_str()); }
+bool ConfigIO::GetUseScreenCapture() const { return GetPrivateProfileIntW(L"OCR", L"UseScreenCapture", 0, settingsPath_.c_str()) != 0; }
+void ConfigIO::SetUseScreenCapture(bool enabled) const { WritePrivateProfileStringW(L"OCR", L"UseScreenCapture", enabled ? L"1" : L"0", settingsPath_.c_str()); }
 void ConfigIO::LoadHistory(HistoryManager& history) const {
     if (path_.empty()) return;
     std::wifstream stream(path_); if (!stream) return;
