@@ -12,4 +12,5 @@ struct CapturedBitmap {
 class CaptureObject {
 public:
     static bool CaptureScreenRect(const RECT& rect, CapturedBitmap& bitmap, std::wstring& error);
+    static bool CropBitmap(const CapturedBitmap& source, const RECT& rect, CapturedBitmap& bitmap, std::wstring& error);
 };

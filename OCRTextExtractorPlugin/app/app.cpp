@@ -3,6 +3,7 @@
 #include "plugin2.h"
 #include <richedit.h>
 #include <filesystem>
+#include <memory>
 
 App* App::instance_ = nullptr;
 void App::Initialize(HINSTANCE instance, LPCWSTR configDirectory) {
@@ -10,6 +11,7 @@ void App::Initialize(HINSTANCE instance, LPCWSTR configDirectory) {
     hive_.config.SetDirectory(configDirectory ? configDirectory : L"."); hive_.config.LoadHistory(hive_.history);
     hive_.getProjectFilePath = [this] { return GetProjectFilePath(); };
     hive_.placeImageOnTimeline = [this](const std::wstring& file) { return PlaceImageOnTimeline(file); };
+    hive_.renderCurrentScene = [this](std::function<void(CapturedBitmap, std::wstring)> completed) { RenderCurrentScene(std::move(completed)); };
     OCRWindow::Register(instance); window_ = OCRWindow::Create(instance, &hive_);
 }
 void App::ShowWindowClient() { if (!instance_ || !instance_->window_) return; ShowWindow(instance_->window_, SW_SHOW); SetForegroundWindow(instance_->window_); }
@@ -46,4 +48,49 @@ bool App::PlaceImageOnTimeline(const std::wstring& file) const {
         auto* context = static_cast<Context*>(value);
         context->placed = edit->create_object_from_media_file(context->file->c_str(), edit->info->layer, edit->info->frame, 0) != nullptr;
     }) && context.placed;
+}
+
+struct App::SceneRenderRequest {
+    std::function<void(CapturedBitmap, std::wstring)> completed;
+};
+
+void App::OnSceneRendered(void* value, int, const void* buffer, int width, int height, int pitch) {
+    std::unique_ptr<SceneRenderRequest> request(static_cast<SceneRenderRequest*>(value));
+    if (!buffer || width <= 0 || height <= 0 || pitch < width * 4) {
+        request->completed({}, L"AviUtl2の映像フレームを取得できませんでした。");
+        return;
+    }
+    CapturedBitmap bitmap{}; bitmap.width = width; bitmap.height = height; bitmap.bgra.resize(static_cast<size_t>(width) * height * 4);
+    const auto* source = static_cast<const unsigned char*>(buffer);
+    for (int y = 0; y < height; ++y) {
+        const auto* from = source + static_cast<size_t>(y) * pitch;
+        auto* to = bitmap.bgra.data() + static_cast<size_t>(y) * width * 4;
+        for (int x = 0; x < width; ++x) {
+            to[x * 4 + 0] = from[x * 4 + 2];
+            to[x * 4 + 1] = from[x * 4 + 1];
+            to[x * 4 + 2] = from[x * 4 + 0];
+            to[x * 4 + 3] = from[x * 4 + 3];
+        }
+    }
+    request->completed(std::move(bitmap), L"");
+}
+
+void App::RenderCurrentScene(std::function<void(CapturedBitmap, std::wstring)> completed) const {
+    if (!editHandle_) { completed({}, L"AviUtl2の編集画面に接続できません。"); return; }
+    auto* request = new SceneRenderRequest{ std::move(completed) };
+    EDIT_INFO info{};
+    // EDIT_SECTION::info は call_read_section() 内では利用できないため、専用APIで取得する。
+    editHandle_->get_edit_info(&info, sizeof(info));
+    if (info.frame < 0 || info.width <= 0 || info.height <= 0) {
+        std::unique_ptr<SceneRenderRequest> failed(request);
+        failed->completed({}, L"AviUtl2の現在シーンを取得できません。プロジェクトとシーンを開いてから再試行してください。");
+        return;
+    }
+    if (!editHandle_->rendering_scene_video(info.frame, request, OnSceneRendered)) {
+        std::unique_ptr<SceneRenderRequest> failed(request);
+        const int editState = editHandle_->get_edit_state();
+        failed->completed({}, editState == EDIT_HANDLE::EDIT_STATE_SAVE
+            ? L"AviUtl2が出力中のため、現在フレームを取得できません。"
+            : L"AviUtl2の現在フレームのレンダリングを開始できませんでした。AviUtl2本体を最新版へ更新してから再試行してください。");
+    }
 }

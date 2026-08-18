@@ -21,6 +21,8 @@ public:
     void SetAutoRecognizeSeconds(int seconds) const;
     bool GetAutoCopy() const;
     void SetAutoCopy(bool enabled) const;
+    bool GetUseScreenCapture() const;
+    void SetUseScreenCapture(bool enabled) const;
 private:
     std::wstring path_;
     std::wstring settingsPath_;

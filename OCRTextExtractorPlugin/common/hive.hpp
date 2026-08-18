@@ -11,4 +11,5 @@ struct Hive {
     ConfigIO config;
     std::function<std::wstring()> getProjectFilePath;
     std::function<bool(const std::wstring&)> placeImageOnTimeline;
+    std::function<void(std::function<void(CapturedBitmap, std::wstring)>)> renderCurrentScene;
 };

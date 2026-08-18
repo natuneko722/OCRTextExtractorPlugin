@@ -1,5 +1,4 @@
 #include "ocr_manager.hpp"
-#include "ocr_formatter.hpp"
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Globalization.h>
 #include <winrt/Windows.Graphics.Imaging.h>
@@ -18,8 +17,8 @@ bool OCRManager::IsAvailable(std::wstring& reason) const {
     return false;
 }
 
-void OCRManager::RecognizeAsync(CapturedBitmap bitmap, bool autoFormat, bool enhanceLowResolution, std::function<void(std::wstring, std::wstring)> completed) const {
-    std::thread([bitmap = std::move(bitmap), autoFormat, enhanceLowResolution, completed = std::move(completed)]() mutable {
+void OCRManager::RecognizeAsync(CapturedBitmap bitmap, bool enhanceLowResolution, std::function<void(std::wstring, std::wstring)> completed) const {
+    std::thread([bitmap = std::move(bitmap), enhanceLowResolution, completed = std::move(completed)]() mutable {
         try {
             if (enhanceLowResolution && (bitmap.width < 1280 || bitmap.height < 720)) {
                 const int width = bitmap.width * 2, height = bitmap.height * 2; std::vector<unsigned char> enlarged(static_cast<size_t>(width) * height * 4);
@@ -35,7 +34,7 @@ void OCRManager::RecognizeAsync(CapturedBitmap bitmap, bool autoFormat, bool enh
             auto engine = OcrEngine::TryCreateFromLanguage(language);
             if (!engine) { completed(L"", L"Windows OCR エンジンを作成できません。" ); return; }
             auto recognized = engine.RecognizeAsync(softwareBitmap).get();
-            const std::wstring text = recognized.Text().c_str(); completed(autoFormat ? OCRFormatter::Normalize(text) : text, L"");
+            const std::wstring text = recognized.Text().c_str(); completed(text, L"");
         } catch (const hresult_error& e) { completed(L"", e.message().c_str()); }
         catch (...) { completed(L"", L"OCR の実行中に予期しないエラーが発生しました。" ); }
     }).detach();
